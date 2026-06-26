@@ -83,24 +83,4 @@ document.addEventListener('DOMContentLoaded', () => {
             orb.style.transform = `translate(${x}px, ${y}px)`;
         });
     });
-
-    // 5. Copy Phone to Clipboard
-    const copyPhoneBtn = document.getElementById('copy-phone');
-    const toast = document.getElementById('toast');
-
-    if (copyPhoneBtn) {
-        copyPhoneBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const phoneNumber = '+34685390351';
-            
-            navigator.clipboard.writeText(phoneNumber).then(() => {
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 3000);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
-        });
-    }
 });
