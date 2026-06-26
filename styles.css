@@ -480,6 +480,14 @@ footer {
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
+
+    .glass-card {
+        padding: 1.5rem;
+    }
+
     .nav-links {
         display: none;
     }
@@ -494,6 +502,14 @@ footer {
     
     .social-links {
         flex-direction: column;
+        gap: 1rem;
+    }
+
+    .social-link {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        justify-content: center;
+        white-space: nowrap;
     }
     
     section {
