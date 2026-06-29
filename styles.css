@@ -513,6 +513,20 @@ footer {
         padding: 0 1rem;
     }
 
+    .nav-container {
+        padding: 0.8rem 1rem;
+    }
+
+    .logo img {
+        height: 36px;
+        transform: scale(3.5);
+    }
+
+    .nav-cta {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
     .glass-card {
         padding: 1.5rem;
     }
