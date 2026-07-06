@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.textContent = message;
             toast.classList.add('visible');
             clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => toast.classList.remove('visible'), 4000);
+            toastTimeout = setTimeout(() => toast.classList.remove('visible'), 6000);
         };
 
         document.querySelectorAll('a.social-link[target="_blank"]').forEach(link => {
