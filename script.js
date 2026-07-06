@@ -101,15 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
             toastTimeout = setTimeout(() => toast.classList.remove('visible'), 6000);
         };
 
-        document.querySelectorAll('a.social-link[target="_blank"]').forEach(link => {
-            link.addEventListener('click', (e) => {
+        const linkedinLink = document.querySelector('a.social-link[href*="linkedin.com"]');
+        if (linkedinLink) {
+            linkedinLink.addEventListener('click', (e) => {
                 e.preventDefault();
-                const url = link.href;
+                const url = linkedinLink.href;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(url).catch(() => {});
                 }
                 showToast('Enlace copiado. Ábrelo pegándolo en Safari/Chrome: Instagram no permite abrirlo directamente.');
             });
-        });
+        }
     }
 });
