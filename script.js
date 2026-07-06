@@ -73,14 +73,43 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mousemove', (e) => {
         const mouseX = e.clientX / window.innerWidth;
         const mouseY = e.clientY / window.innerHeight;
-        
+
         orbs.forEach((orb, index) => {
             const speed = (index + 1) * 20;
             const x = (window.innerWidth - e.pageX * speed) / 100;
             const y = (window.innerHeight - e.pageY * speed) / 100;
-            
+
             // Using transform to move the orbs slightly based on mouse position
             orb.style.transform = `translate(${x}px, ${y}px)`;
         });
     });
+
+    // 5. In-app browser fallback (Instagram/Facebook block external app links,
+    // e.g. LinkedIn, and silently bounce the user back instead of opening them)
+    const isInAppBrowser = /Instagram|FBAN|FBAV/i.test(navigator.userAgent);
+    if (isInAppBrowser) {
+        const toast = document.createElement('div');
+        toast.className = 'inapp-toast';
+        toast.setAttribute('role', 'status');
+        document.body.appendChild(toast);
+
+        let toastTimeout;
+        const showToast = (message) => {
+            toast.textContent = message;
+            toast.classList.add('visible');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.remove('visible'), 4000);
+        };
+
+        document.querySelectorAll('a.social-link[target="_blank"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = link.href;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).catch(() => {});
+                }
+                showToast('Enlace copiado. Ábrelo pegándolo en Safari/Chrome: Instagram no permite abrirlo directamente.');
+            });
+        });
+    }
 });
