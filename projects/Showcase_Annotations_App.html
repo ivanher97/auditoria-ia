@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+<title>Annotations App — Presentación del proyecto</title>
+<meta name="description" content="Annotations App: editor de escritorio para anotaciones YOLO con conversor a COCO. Presentación a nivel usuario y visión técnica de la arquitectura por capas.">
+<style>
+    :root {
+        --bg: #0a0a0f;
+        --surface: rgba(25, 25, 35, 0.6);
+        --surface-2: rgba(35, 35, 48, 0.75);
+        --ink: #f0f0f5;
+        --ink-2: #a0a0b0;
+        --ink-3: rgba(160, 160, 176, 0.65);
+        --accent: #00f0ff;
+        --accent-secondary: #7000ff;
+        --accent-tertiary: #ff0055;
+        --accent-soft: rgba(0, 240, 255, 0.12);
+        --accent-line: rgba(0, 240, 255, 0.4);
+        --border: rgba(255, 255, 255, 0.08);
+        --radius: 16px;
+        --ok: #34d399;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: 'Inter', "Segoe UI", -apple-system, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.65;
+        position: relative;
+        overflow-x: hidden;
+    }
+    body::before, body::after {
+        content: ''; position: fixed; border-radius: 50%;
+        filter: blur(100px); z-index: -1; pointer-events: none;
+        animation: floatOrb 20s infinite ease-in-out alternate;
+    }
+    body::before {
+        width: 42vw; height: 42vw; top: -14%; left: -12%;
+        background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 70%);
+        opacity: 0.32;
+    }
+    body::after {
+        width: 34vw; height: 34vw; bottom: 4%; right: -10%;
+        background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+        opacity: 0.2; animation-delay: -5s;
+    }
+    @keyframes floatOrb {
+        0% { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(4%, 8%) scale(1.1); }
+    }
+    h1, h2, h3, .brand, .tile .value, .kicker, .step .t { font-family: 'Outfit', sans-serif; }
+    .tile, .card, .panel, .step, .step-detail, .faq-item, .estado, .key-row, .seg { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .topbar {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(10, 10, 15, 0.8);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+    }
+    .topbar .wrap {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1rem; padding-top: 0.7rem; padding-bottom: 0.7rem; flex-wrap: wrap;
+    }
+    .brand { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 0.6rem; }
+    .brand .v { font-size: 0.72rem; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 0.1rem 0.55rem; border-radius: 999px; }
+    .seg { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem; gap: 0.25rem; }
+    .seg button {
+        font: inherit; font-size: 0.88rem; font-weight: 600;
+        color: var(--ink-2); background: transparent; border: 0;
+        padding: 0.45rem 1.1rem; border-radius: 999px; cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .seg button:hover { color: var(--ink); }
+    .seg button.active { background: var(--accent); color: var(--bg); }
+
+    header.hero { text-align: center; padding: 4.5rem 0 3rem; }
+    .kicker { display: inline-block; font-size: 0.8rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+    h1 { font-size: clamp(2.2rem, 5.5vw, 3.6rem); font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem; }
+    h1 .grad { background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .pitch { font-size: 1.15rem; color: var(--ink); max-width: 700px; margin: 0 auto; }
+
+    .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 2.6rem 0 0; }
+    .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.15rem 1.25rem; text-align: left; }
+    .tile .label { font-size: 0.8rem; color: var(--ink-3); margin-bottom: 0.25rem; }
+    .tile .value { font-size: 1.9rem; font-weight: 650; color: var(--ink); line-height: 1.15; }
+    .tile .note { font-size: 0.8rem; color: var(--ink-2); margin-top: 0.2rem; }
+
+    section { padding: 2.4rem 0; }
+    h2 { font-size: 1.6rem; font-weight: 750; margin-bottom: 0.4rem; letter-spacing: -0.3px; }
+    .sub { color: var(--ink-2); margin-bottom: 1.6rem; max-width: 720px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.5rem; transition: border-color 0.25s, transform 0.25s; }
+    .card:hover { border-color: var(--accent-line); transform: translateY(-3px); box-shadow: 0 15px 40px rgba(0, 240, 255, 0.1); }
+    .card .ico { font-size: 1.5rem; margin-bottom: 0.6rem; display: block; }
+    .card h3 { font-size: 1.02rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .card p { font-size: 0.92rem; color: var(--ink-2); }
+
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.6rem 1.7rem; }
+    .panel.trouble { border-left: 3px solid var(--accent-tertiary); }
+    .panel.fix { border-left: 3px solid var(--ok); }
+    .panel h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+    .panel p, .panel li { color: var(--ink-2); font-size: 0.95rem; }
+    .panel ul { padding-left: 1.1rem; margin-top: 0.5rem; }
+    .panel li { margin-bottom: 0.35rem; }
+
+    .steps { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .step {
+        flex: 1 1 150px; font: inherit; text-align: left; cursor: pointer;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+        padding: 0.9rem 1rem; color: var(--ink-2); transition: all 0.2s;
+    }
+    .step .n {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 1.6rem; height: 1.6rem; border-radius: 50%; font-size: 0.8rem; font-weight: 700;
+        background: var(--surface-2); color: var(--ink-2); margin-bottom: 0.45rem;
+    }
+    .step .t { display: block; font-weight: 650; font-size: 0.92rem; color: var(--ink); }
+    .step:hover { border-color: var(--accent-line); }
+    .step.active { border-color: var(--accent); background: var(--accent-soft); }
+    .step.active .n { background: var(--accent); color: var(--bg); }
+    .step-detail { background: var(--surface); border: 1px solid var(--accent-line); border-radius: var(--radius); padding: 1.5rem 1.7rem; min-height: 7.5rem; }
+    .step-detail h3 { font-size: 1.05rem; margin-bottom: 0.4rem; color: var(--accent); }
+    .step-detail p { color: var(--ink-2); font-size: 0.97rem; }
+    .hint { font-size: 0.8rem; color: var(--ink-3); margin-top: 0.6rem; }
+
+    .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.6rem; }
+    .key-row {
+        display: flex; align-items: center; gap: 0.9rem;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+        padding: 0.7rem 1rem;
+    }
+    kbd {
+        font-family: Consolas, "Courier New", monospace; font-size: 0.8rem;
+        background: var(--surface-2); border: 1px solid var(--border); border-bottom-width: 2px;
+        border-radius: 6px; padding: 0.15rem 0.55rem; color: var(--ink); white-space: nowrap;
+    }
+    .key-row .desc { color: var(--ink-2); font-size: 0.9rem; }
+
+    .faq { display: grid; gap: 0.6rem; }
+    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .faq-q {
+        width: 100%; font: inherit; font-weight: 650; font-size: 0.97rem; color: var(--ink);
+        background: transparent; border: 0; text-align: left; cursor: pointer;
+        padding: 1rem 1.3rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .faq-q::after { content: '+'; font-size: 1.3rem; color: var(--accent); transition: transform 0.25s; flex-shrink: 0; }
+    .faq-item.open .faq-q::after { transform: rotate(45deg); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .faq-item.open .faq-a { max-height: 260px; }
+    .faq-a p { padding: 0 1.3rem 1.1rem; color: var(--ink-2); font-size: 0.93rem; }
+
+    /* ── Diagrama de arquitectura por capas ─────────────────── */
+    .arch-wrap { overflow-x: auto; margin-bottom: 1rem; border-radius: var(--radius); }
+    .arch-wrap svg { display: block; min-width: 720px; width: 100%; height: auto; }
+    .arch-node { cursor: pointer; }
+    .arch-node rect { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; transition: all 0.2s; }
+    .arch-node:hover rect { stroke: var(--accent-line); }
+    .arch-node.on rect { stroke: var(--accent); fill: var(--accent-soft); }
+    .arch-line { stroke: var(--border); stroke-width: 1.5; }
+    svg text { font-family: "Segoe UI", -apple-system, Roboto, Arial, sans-serif; }
+    .t-name { fill: var(--ink); font-size: 13px; font-weight: 600; }
+    .t-sub { fill: var(--ink-2); font-size: 10.5px; }
+    .t-side { fill: var(--ink-3); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }
+
+    .decision { border-left: 3px solid var(--accent); }
+    .decision .why { color: var(--accent); font-weight: 650; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 0.4rem; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    .chip { font-size: 0.85rem; color: var(--ink-2); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.85rem; }
+    .chip b { color: var(--ink); font-weight: 600; }
+
+    .estado { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.6rem 1.7rem; }
+    .estado h3 { margin-bottom: 0.6rem; }
+    .estado p { color: var(--ink-2); font-size: 0.95rem; margin-bottom: 0.5rem; }
+
+    body[data-view="user"] .only-tech { display: none; }
+    body[data-view="tech"] .only-user { display: none; }
+
+    footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2.2rem 0 2.6rem; text-align: center; }
+    footer .sig { font-weight: 700; font-size: 1.05rem; }
+    footer .role { color: var(--ink-2); font-size: 0.9rem; }
+    footer .credits { color: var(--ink-2); font-size: 0.85rem; margin-top: 0.7rem; }
+    footer .conf { color: var(--ink-3); font-size: 0.8rem; margin-top: 0.9rem; max-width: 560px; margin-left: auto; margin-right: auto; }
+
+    @media (max-width: 860px) {
+        .tiles { grid-template-columns: repeat(2, 1fr); }
+        .duo { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+        .tiles { grid-template-columns: 1fr; }
+        header.hero { padding-top: 3rem; }
+    }
+</style>
+</head>
+<body data-view="user">
+
+<nav class="topbar">
+    <div class="wrap">
+        <div class="brand">🎯 Annotations App <span class="v">V0.1 · refactor en curso</span></div>
+        <div class="seg" role="tablist" aria-label="Nivel de detalle">
+            <button type="button" data-view-btn="user" class="active" role="tab" aria-selected="true">👤 Nivel usuario</button>
+            <button type="button" data-view-btn="tech" role="tab" aria-selected="false">⚙️ Nivel técnico</button>
+        </div>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="wrap">
+        <span class="kicker">Visión por computador · herramienta de escritorio</span>
+        <h1><span class="grad">Corregir un dataset YOLO<br>a la velocidad del teclado</span></h1>
+        <p class="pitch">Editor de escritorio para revisar, corregir y crear anotaciones de detección de objetos en formato YOLO, con un conversor complementario a COCO. Pensado para el trabajo real con datasets: filtrar por clase, editar cajas con precisión de 6 decimales y exportar sin tocar una línea de código.</p>
+
+        <div class="tiles">
+            <div class="tile"><div class="label">Precisión de coordenadas</div><div class="value">6</div><div class="note">Decimales, normalizadas 0–1</div></div>
+            <div class="tile"><div class="label">Historial de deshacer</div><div class="value">15</div><div class="note">Estados por imagen</div></div>
+            <div class="tile"><div class="label">Formatos de imagen</div><div class="value">5</div><div class="note">jpg · jpeg · png · bmp · webp</div></div>
+            <div class="tile"><div class="label">Instalación necesaria</div><div class="value">0</div><div class="note">Ejecutable .exe (PyInstaller)</div></div>
+        </div>
+    </div>
+</header>
+
+<main class="wrap">
+
+    <!-- ══════════ NIVEL USUARIO ══════════ -->
+    <section class="only-user">
+        <h2>El problema y la solución</h2>
+        <p class="sub">Un dataset de detección de objetos vive en ficheros de texto plano: un .txt por imagen con números normalizados. Revisar y corregir eso a mano no escala.</p>
+        <div class="duo">
+            <div class="panel trouble">
+                <h3>😓 Antes</h3>
+                <ul>
+                    <li>Corregir una caja significaba editar números a ciegas en un .txt.</li>
+                    <li>Encontrar las imágenes de una clase concreta: abrirlas una a una.</li>
+                    <li>Borrar una imagen y olvidar su etiqueta dejaba el dataset inconsistente.</li>
+                    <li>Convertir a COCO: script ad-hoc distinto en cada ocasión.</li>
+                </ul>
+            </div>
+            <div class="panel fix">
+                <h3>✨ Ahora</h3>
+                <ul>
+                    <li>Cada caja se ve sobre la imagen y se corrige arrastrando o con las flechas.</li>
+                    <li>Escribir «6,8,12» filtra al instante las imágenes que contienen esas clases.</li>
+                    <li>El borrado elimina imagen y etiqueta juntas: sin huérfanos.</li>
+                    <li>Un comando convierte todo el dataset a COCO de forma reproducible.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="only-user">
+        <h2>Lo que aporta</h2>
+        <div class="cards">
+            <div class="card"><span class="ico">🎯</span><h3>Edición precisa</h3><p>Dibuja cajas arrastrando, muévelas, redimensiona desde las esquinas o ajusta al detalle con las flechas del teclado y un panel numérico con 6 decimales.</p></div>
+            <div class="card"><span class="ico">🔍</span><h3>Filtros inteligentes</h3><p>Filtra por clases, por nombre de fichero, muestra solo las cajas de las clases filtradas u oculta las preexistentes para revisar únicamente lo nuevo.</p></div>
+            <div class="card"><span class="ico">🔎</span><h3>Zoom y paneo</h3><p>Zoom con la rueda hacia donde apunta el cursor (hasta ×10) y paneo con el botón derecho: los objetos pequeños dejan de ser un problema.</p></div>
+            <div class="card"><span class="ico">⌨️</span><h3>Pensada para teclado</h3><p>Guardar, copiar y pegar cajas, deshacer, navegar entre imágenes y mover la selección: todo sin soltar el teclado, con confirmación visual en pantalla.</p></div>
+            <div class="card"><span class="ico">🗑️</span><h3>Limpieza segura</h3><p>Eliminar una imagen borra también su etiqueta y actualiza la lista: el dataset nunca queda a medias. La app recuerda tu última carpeta al arrancar.</p></div>
+            <div class="card"><span class="ico">📦</span><h3>Ejecutable directo</h3><p>Se distribuye como .exe: no requiere instalar Python ni dependencias. Doble clic y a anotar.</p></div>
+        </div>
+    </section>
+
+    <section class="only-user">
+        <h2>Atajos de teclado</h2>
+        <p class="sub">El flujo de trabajo completo cabe en una mano.</p>
+        <div class="keys">
+            <div class="key-row"><kbd>Espacio</kbd><span class="desc">Activar el modo de dibujo de una caja nueva</span></div>
+            <div class="key-row"><kbd>Ctrl</kbd>+<kbd>S</kbd><span class="desc">Guardar las etiquetas de la imagen</span></div>
+            <div class="key-row"><kbd>Ctrl</kbd>+<kbd>Z</kbd><span class="desc">Deshacer (hasta 15 pasos)</span></div>
+            <div class="key-row"><kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>V</kbd><span class="desc">Copiar y pegar la caja seleccionada</span></div>
+            <div class="key-row"><kbd>Supr</kbd><span class="desc">Eliminar la caja seleccionada</span></div>
+            <div class="key-row"><kbd>←</kbd> <kbd>→</kbd><span class="desc">Imagen anterior / siguiente</span></div>
+            <div class="key-row"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd><span class="desc">Mover la caja seleccionada con precisión</span></div>
+            <div class="key-row"><kbd>Shift</kbd>+<kbd>flechas</kbd><span class="desc">Mover la caja en pasos ×5</span></div>
+            <div class="key-row"><kbd>Rueda</kbd><span class="desc">Zoom hacia el cursor</span></div>
+            <div class="key-row"><kbd>Clic dcho.</kbd>+<kbd>arrastrar</kbd><span class="desc">Paneo de la imagen</span></div>
+        </div>
+    </section>
+
+    <section class="only-user">
+        <h2>Preguntas frecuentes</h2>
+        <div class="faq">
+            <div class="faq-item">
+                <button type="button" class="faq-q" aria-expanded="false">¿Qué es el formato YOLO?</button>
+                <div class="faq-a"><p>Un estándar de anotación para detección de objetos: junto a cada imagen hay un fichero .txt con una línea por objeto — la clase y la posición de su caja (centro, ancho y alto) en valores de 0 a 1, independientes del tamaño de la imagen. La app lee y escribe exactamente ese formato.</p></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-q" aria-expanded="false">¿Puede estropear mis imágenes?</button>
+                <div class="faq-a"><p>No. La aplicación solo lee las imágenes; lo único que escribe son los ficheros .txt de etiquetas. La única operación destructiva es el borrado de imagen, que es un botón explícito y elimina el par imagen + etiqueta de forma coherente.</p></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-q" aria-expanded="false">¿Qué necesito para usarla?</button>
+                <div class="faq-a"><p>Solo el ejecutable y una carpeta de dataset con la estructura estándar: un subdirectorio <b>images/</b> con las imágenes y un subdirectorio <b>labels/</b> con los .txt. La app valida la estructura al cargarla y recuerda la última carpeta usada.</p></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-q" aria-expanded="false">¿Y si una imagen no tiene ninguna anotación?</button>
+                <div class="faq-a"><p>Es un caso normal y valioso: una imagen sin objetos (imagen «OK»). El editor la abre con el lienzo limpio, y el conversor a COCO la conserva en el dataset final sin anotaciones — muchos modelos necesitan también ejemplos negativos.</p></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-q" aria-expanded="false">¿Cómo paso el dataset a COCO?</button>
+                <div class="faq-a"><p>Con la herramienta complementaria de línea de comandos: le indicas la carpeta del dataset YOLO y genera una carpeta nueva con las imágenes copiadas y un único <b>annotations.json</b> en formato COCO, listo para frameworks de entrenamiento que consumen ese estándar. El dataset original no se toca.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══════════ PIPELINE (compartido, con doble lectura) ══════════ -->
+    <section>
+        <h2>El flujo de trabajo, paso a paso</h2>
+        <p class="sub">Haz clic en cada paso para ver el detalle. La explicación cambia según la vista elegida arriba (usuario o técnica).</p>
+        <div class="steps" id="steps"></div>
+        <div class="step-detail" id="stepDetail"></div>
+        <p class="hint">💡 Consejo: cambia entre «Nivel usuario» y «Nivel técnico» en la barra superior y vuelve a pulsar un paso.</p>
+    </section>
+
+    <!-- ══════════ NIVEL TÉCNICO ══════════ -->
+    <section class="only-tech">
+        <h2>Arquitectura por capas</h2>
+        <p class="sub">Separación estricta de responsabilidades: los widgets pintan y emiten señales, los controladores orquestan, el core decide y persiste. El conversor es un proceso independiente cuyo único contrato con el editor es el dataset en disco. Haz clic en cualquier pieza.</p>
+
+        <div class="arch-wrap">
+            <svg viewBox="0 0 780 470" role="img" aria-label="Diagrama de arquitectura por capas de Annotations App">
+                <!-- Etiquetas de capa -->
+                <text class="t-side" x="110" y="40" text-anchor="middle">UI · WIDGETS</text>
+                <text class="t-side" x="320" y="40" text-anchor="middle">CONTROLLERS</text>
+                <text class="t-side" x="530" y="40" text-anchor="middle">CORE</text>
+                <text class="t-side" x="700" y="40" text-anchor="middle">DISCO</text>
+
+                <!-- Conexiones -->
+                <line class="arch-line" x1="200" y1="84"  x2="230" y2="120"/>
+                <line class="arch-line" x1="200" y1="90"  x2="230" y2="238"/>
+                <line class="arch-line" x1="200" y1="164" x2="230" y2="235"/>
+                <line class="arch-line" x1="200" y1="244" x2="230" y2="248"/>
+                <line class="arch-line" x1="200" y1="322" x2="230" y2="262"/>
+                <line class="arch-line" x1="410" y1="120" x2="440" y2="84"/>
+                <line class="arch-line" x1="410" y1="130" x2="440" y2="90"/>
+                <line class="arch-line" x1="410" y1="240" x2="440" y2="204"/>
+                <line class="arch-line" x1="410" y1="252" x2="440" y2="318"/>
+                <line class="arch-line" x1="620" y1="84"  x2="640" y2="140"/>
+                <line class="arch-line" x1="620" y1="204" x2="640" y2="160"/>
+                <line class="arch-line" x1="560" y1="390" x2="672" y2="185"/>
+                <line class="arch-line" x1="620" y1="410" x2="640" y2="344"/>
+
+                <!-- UI -->
+                <g class="arch-node" data-arch="mainwindow" tabindex="0" role="button" aria-label="MainWindow">
+                    <rect x="20" y="55" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="110" y="80" text-anchor="middle">🪟 MainWindow</text>
+                    <text class="t-sub" x="110" y="97" text-anchor="middle">composición · atajos · settings</text>
+                </g>
+                <g class="arch-node" data-arch="viewer" tabindex="0" role="button" aria-label="ImageViewer">
+                    <rect x="20" y="135" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="110" y="160" text-anchor="middle">🖼️ ImageViewer</text>
+                    <text class="t-sub" x="110" y="177" text-anchor="middle">lienzo: dibujo · zoom · pan</text>
+                </g>
+                <g class="arch-node" data-arch="infopanel" tabindex="0" role="button" aria-label="InfoPanel">
+                    <rect x="20" y="215" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="110" y="240" text-anchor="middle">🎛️ InfoPanel</text>
+                    <text class="t-sub" x="110" y="257" text-anchor="middle">edición numérica · acciones</text>
+                </g>
+                <g class="arch-node" data-arch="toast" tabindex="0" role="button" aria-label="Toast y lista">
+                    <rect x="20" y="295" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="110" y="320" text-anchor="middle">💬 Toast · ListItem</text>
+                    <text class="t-sub" x="110" y="337" text-anchor="middle">feedback no bloqueante</text>
+                </g>
+
+                <!-- Controllers -->
+                <g class="arch-node" data-arch="listctrl" tabindex="0" role="button" aria-label="ImageListController">
+                    <rect x="230" y="95" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="320" y="120" text-anchor="middle">📋 ImageListController</text>
+                    <text class="t-sub" x="320" y="137" text-anchor="middle">filtros · navegación · borrado</text>
+                </g>
+                <g class="arch-node" data-arch="annctrl" tabindex="0" role="button" aria-label="AnnotationController">
+                    <rect x="230" y="215" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="320" y="240" text-anchor="middle">✏️ AnnotationController</text>
+                    <text class="t-sub" x="320" y="257" text-anchor="middle">undo · clipboard · guardado</text>
+                </g>
+
+                <!-- Core -->
+                <g class="arch-node" data-arch="datasetmgr" tabindex="0" role="button" aria-label="DatasetManager">
+                    <rect x="440" y="55" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="530" y="80" text-anchor="middle">🗂️ DatasetManager</text>
+                    <text class="t-sub" x="530" y="97" text-anchor="middle">indexado · filtros · rutas</text>
+                </g>
+                <g class="arch-node" data-arch="yoloio" tabindex="0" role="button" aria-label="yolo_io">
+                    <rect x="440" y="175" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="530" y="200" text-anchor="middle">📄 yolo_io</text>
+                    <text class="t-sub" x="530" y="217" text-anchor="middle">parseo y guardado .txt</text>
+                </g>
+                <g class="arch-node" data-arch="model" tabindex="0" role="button" aria-label="BoundingBox">
+                    <rect x="440" y="295" width="180" height="58" rx="12"/>
+                    <text class="t-name" x="530" y="320" text-anchor="middle">📦 BoundingBox</text>
+                    <text class="t-sub" x="530" y="337" text-anchor="middle">dataclass · slots</text>
+                </g>
+
+                <!-- Disco -->
+                <g class="arch-node" data-arch="disk" tabindex="0" role="button" aria-label="Dataset en disco">
+                    <rect x="640" y="115" width="120" height="70" rx="12"/>
+                    <text class="t-name" x="700" y="145" text-anchor="middle">📁 dataset</text>
+                    <text class="t-sub" x="700" y="163" text-anchor="middle">images/ · labels/</text>
+                </g>
+                <g class="arch-node" data-arch="cocojson" tabindex="0" role="button" aria-label="Salida COCO">
+                    <rect x="640" y="300" width="120" height="70" rx="12"/>
+                    <text class="t-name" x="700" y="330" text-anchor="middle">🧾 COCO</text>
+                    <text class="t-sub" x="700" y="348" text-anchor="middle">annotations.json</text>
+                </g>
+
+                <!-- Transversales -->
+                <g class="arch-node" data-arch="utils" tabindex="0" role="button" aria-label="Utilidades">
+                    <rect x="20" y="390" width="390" height="52" rx="12"/>
+                    <text class="t-name" x="215" y="412" text-anchor="middle">🧰 utils — geometry · logger</text>
+                    <text class="t-sub" x="215" y="429" text-anchor="middle">funciones puras y transversales</text>
+                </g>
+                <g class="arch-node" data-arch="converter" tabindex="0" role="button" aria-label="Conversor YOLO a COCO">
+                    <rect x="440" y="390" width="180" height="52" rx="12"/>
+                    <text class="t-name" x="530" y="412" text-anchor="middle">⚙️ CLI YOLO → COCO</text>
+                    <text class="t-sub" x="530" y="429" text-anchor="middle">app complementaria · batch</text>
+                </g>
+            </svg>
+        </div>
+        <div class="step-detail" id="archDetail"></div>
+    </section>
+
+    <section class="only-tech">
+        <h2>De monolito a capas</h2>
+        <p class="sub">El proyecto es un refactor evolutivo en marcha: la app funcionaba, pero no podía crecer. La reescritura se hace por fases documentadas, sin big-bang y sin romper la herramienta que el equipo usa.</p>
+        <div class="duo">
+            <div class="panel trouble">
+                <h3>🧱 Punto de partida (legacy)</h3>
+                <ul>
+                    <li>Un único fichero de ~800 líneas: UI, estado, geometría y persistencia entrelazados.</li>
+                    <li>Imposible de testear sin levantar toda la interfaz Qt.</li>
+                    <li>Cada funcionalidad nueva tocaba el mismo fichero y arriesgaba las demás.</li>
+                </ul>
+            </div>
+            <div class="panel fix">
+                <h3>🏗️ Hoy (src/, 14 módulos)</h3>
+                <ul>
+                    <li><b>core</b> sin ningún import de UI: dataset, modelo y persistencia testables en aislamiento.</li>
+                    <li><b>controllers</b> que orquestan mediante señales/slots de Qt, sin lógica en los widgets.</li>
+                    <li><b>widgets</b> que solo pintan e interactúan; <b>utils</b> con geometría pura.</li>
+                    <li>El monolito se conserva en <b>legacy/</b> como referencia hasta cerrar la migración.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="only-tech">
+        <h2>Decisiones técnicas y su porqué</h2>
+        <div class="cards">
+            <div class="card decision"><span class="why">Integridad de datos</span><h3>Coordenadas normalizadas como única verdad</h3><p>El modelo solo conoce valores 0–1; la conversión a píxeles ocurre exclusivamente al pintar (<code>geometry.py</code>). Zoom, paneo o redimensionar la ventana jamás pueden corromper una anotación, y guardar es solo formatear con 6 decimales.</p></div>
+            <div class="card decision"><span class="why">Desacoplamiento</span><h3>Señales y slots en vez de llamadas directas</h3><p>Los widgets emiten (<code>bbox_drawn</code>, <code>bbox_modified</code>, <code>action_requested</code>…) y los controladores deciden. Ningún widget conoce al resto: se pueden sustituir o testear por separado, y las acciones del panel viajan como <code>Enum</code>, no como strings mágicos.</p></div>
+            <div class="card decision"><span class="why">UX de edición</span><h3>Undo por snapshots acotados</h3><p>Cada acción destructiva guarda una copia profunda del estado (máximo 15). Para listas pequeñas de cajas es más simple y robusto que un patrón Command: menos código, cero estados imposibles, memoria acotada.</p></div>
+            <div class="card decision"><span class="why">Separación de procesos</span><h3>Editor y conversor independientes</h3><p>Anotar es interactivo; convertir es batch. El conversor CLI no comparte ni una línea con el editor: su contrato es la carpeta del dataset. Se puede automatizar en un pipeline sin arrastrar dependencias de Qt.</p></div>
+            <div class="card decision"><span class="why">Robustez</span><h3>Lectura tolerante, escritura estricta</h3><p>Una línea corrupta en un .txt se omite con warning (fichero y número de línea al log), nunca tumba la app. Al guardar, en cambio, el formato es canónico: clase + 4 floats con precisión fija. El clamping garantiza cajas siempre dentro de [0,1].</p></div>
+            <div class="card decision"><span class="why">Adopción</span><h3>Distribución como ejecutable</h3><p>Empaquetado con PyInstaller: el anotador no instala Python ni dependencias. Los logs se escriben junto al ejecutable (nunca en System32), de modo que cualquier incidencia en el puesto del usuario llega con su diagnóstico incluido.</p></div>
+        </div>
+    </section>
+
+    <section class="only-tech">
+        <h2>Stack tecnológico</h2>
+        <div class="chips">
+            <span class="chip"><b>Python 3.12</b></span>
+            <span class="chip"><b>PySide6 6.11</b> · Qt: widgets, señales/slots, QPainter</span>
+            <span class="chip"><b>dataclasses</b> · modelo con slots</span>
+            <span class="chip"><b>QSettings</b> · persistencia de preferencias</span>
+            <span class="chip"><b>logging</b> · consola + fichero, consciente de PyInstaller</span>
+            <span class="chip"><b>Pillow</b> · dimensiones reales en el conversor</span>
+            <span class="chip"><b>argparse</b> · CLI del conversor</span>
+            <span class="chip"><b>PyInstaller 6.20</b> · empaquetado .exe</span>
+        </div>
+    </section>
+
+    <section class="only-tech">
+        <h2>Estado del proyecto</h2>
+        <div class="estado">
+            <h3>Refactor evolutivo en curso — guiado por documentación propia</h3>
+            <p>La aplicación es funcional y se usa: carga de datasets, filtros, edición completa de cajas (dibujo, arrastre, redimensionado, teclado), undo, guardado YOLO, borrado seguro y conversión a COCO. La migración desde el monolito sigue una guía de refactor de 7 fases versionada en el repo, con un documento de estado que audita el avance con autocrítica: qué fronteras están cerradas y cuáles no.</p>
+            <p><b>Hecho:</b> separación core/UI/controllers/utils, core encapsulado (caches privadas, propiedades inmutables), persistencia YOLO aislada, geometría extraída a funciones puras.</p>
+            <p><b>En curso (julio 2026):</b> cerrar las últimas fronteras entre UI y core, añadir la suite de tests (geometry y yolo_io como primeros candidatos: puras y sin Qt) y descomponer <code>ImageViewer</code>, la clase más compleja del proyecto.</p>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    <div class="wrap">
+        <div class="sig">Iván Herrero Galván</div>
+        <div class="role">AI &amp; Automation Specialist</div>
+        <p class="credits">Diseño UI y desarrollo inicial: Devi Tin Sein · Arquitectura de software y desarrollo evolutivo: Iván Herrero Galván</p>
+        <p class="conf">El código fuente de este proyecto es confidencial por motivos empresariales. Esta página describe el producto y su arquitectura a alto nivel, sin exponer implementación.</p>
+    </div>
+</footer>
+
+<script>
+(function () {
+    'use strict';
+
+    var viewBtns = document.querySelectorAll('[data-view-btn]');
+    viewBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.body.dataset.view = btn.dataset.viewBtn;
+            viewBtns.forEach(function (b) {
+                b.classList.toggle('active', b === btn);
+                b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+            });
+            renderStepDetail();
+        });
+    });
+
+    /* ── Pipeline ── */
+    var STEPS = [
+        {
+            t: 'Cargar el dataset',
+            user: 'Se elige la carpeta del dataset con el explorador de siempre. La app comprueba que tenga la estructura correcta (images/ y labels/), indexa las imágenes válidas y, la próxima vez que arranque, reabre sola la última carpeta usada.',
+            tech: 'QFileDialog nativo → DatasetManager.load_dataset() valida la estructura, indexa solo extensiones soportadas y expone el índice como tuplas inmutables (la UI no puede mutarlo). QSettings persiste la última ruta entre sesiones. Los ficheros no válidos se registran en el log, no revientan la carga.'
+        },
+        {
+            t: 'Filtrar y navegar',
+            user: 'Con miles de imágenes, encontrar las que importan es el primer problema. Se filtra por clases («6,8,12»), por trozo del nombre de fichero, o ambos; los contadores muestran cuántas quedan. Flechas o botones para avanzar, y el nombre se copia con un clic.',
+            tech: 'El filtrado vive en el core: DatasetManager parsea los IDs y lee los labels bajo demanda para decidir qué imágenes contienen esas clases. ImageListController reconstruye la QListWidget con widgets custom y emite image_selected; la ventana solo reacciona a la señal.'
+        },
+        {
+            t: 'Editar las cajas',
+            user: 'Cada anotación se ve sobre la imagen con su clase y número de línea. Se dibuja una caja nueva con Espacio, se mueve arrastrando, se redimensiona por las esquinas o se ajusta fino con las flechas. Zoom con la rueda, paneo con el botón derecho, copiar/pegar cajas y deshacer hasta 15 pasos.',
+            tech: 'ImageViewer traduce píxeles ↔ coordenadas normalizadas con funciones puras de geometry.py, hace hit-testing de esquinas para el redimensionado y clampa siempre a [0,1]. AnnotationController es el dueño del estado: antes de cada acción destructiva guarda un snapshot (deepcopy, máx. 15) que alimenta el undo. El panel numérico y el lienzo se sincronizan por señales, con guardas anti-bucle.'
+        },
+        {
+            t: 'Guardar en YOLO',
+            user: 'Ctrl+S o el botón de guardar escriben las etiquetas de la imagen actual y lo confirman con una notificación flotante. Si una imagen sobra, el borrado elimina imagen y etiqueta a la vez para que el dataset nunca quede inconsistente.',
+            tech: 'yolo_io.save_yolo_labels() escribe el formato canónico «class cx cy w h» con 6 decimales, UTF-8. La lectura es tolerante: líneas corruptas se omiten con warning (con número de línea) en vez de abortar. El borrado del par imagen-etiqueta y la actualización del índice viven en DatasetManager, no en la UI.'
+        },
+        {
+            t: 'Exportar a COCO',
+            user: 'Cuando el dataset está listo, la herramienta complementaria lo convierte a formato COCO con un solo comando: crea una carpeta nueva con las imágenes copiadas y un único fichero annotations.json. Las imágenes sin defectos (sin anotaciones) se conservan como imágenes OK, y el original no se toca.',
+            tech: 'CLI independiente (argparse + Pillow): lee las dimensiones reales de cada imagen y convierte cada caja normalizada a [x_min, y_min, w, h] en píxeles absolutos con clamping a los límites. Las imágenes con label vacío o sin label entran en images sin annotations (ejemplos negativos), y las categorías se autodetectan de los class_id presentes. Salida: carpeta espejo + annotations.json indentado.'
+        }
+    ];
+
+    var stepsEl = document.getElementById('steps');
+    var stepDetailEl = document.getElementById('stepDetail');
+    var currentStep = 0;
+
+    STEPS.forEach(function (s, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'step' + (i === 0 ? ' active' : '');
+        b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="t">' + s.t + '</span>';
+        b.addEventListener('click', function () {
+            currentStep = i;
+            stepsEl.querySelectorAll('.step').forEach(function (el, j) {
+                el.classList.toggle('active', j === i);
+            });
+            renderStepDetail();
+        });
+        stepsEl.appendChild(b);
+    });
+
+    function renderStepDetail() {
+        var s = STEPS[currentStep];
+        var mode = document.body.dataset.view === 'tech' ? 'tech' : 'user';
+        stepDetailEl.innerHTML = '<h3>Paso ' + (currentStep + 1) + ' — ' + s.t + '</h3><p>' + s[mode] + '</p>';
+    }
+
+    /* ── Diagrama de arquitectura ── */
+    var ARCH = {
+        mainwindow: { t: 'MainWindow — composición, no lógica', d: 'Construye la ventana (splitter de tres paneles: lista, lienzo, panel de edición), registra los atajos globales con QShortcut y recuerda el último dataset vía QSettings. Toda la lógica está delegada: conecta señales de widgets con controladores y no toca datos directamente.' },
+        viewer: { t: 'ImageViewer — el lienzo interactivo', d: 'El widget más complejo: pinta imagen y cajas en paintEvent, hace hit-testing de esquinas, gestiona arrastres para mover/redimensionar/dibujar, zoom hacia el cursor con la rueda (×0.1–×10) y paneo con botón derecho. Solo traduce entre píxeles de pantalla y coordenadas normalizadas — nunca decide qué se guarda: emite señales y el controlador resuelve.' },
+        infopanel: { t: 'InfoPanel — edición numérica exacta', d: 'Spinboxes con 6 decimales para clase, centro y dimensiones de la caja seleccionada, sincronizados en ambos sentidos con el lienzo. Sus botones emiten un Enum (PanelAction) en vez de strings mágicos, y una guarda interna evita bucles de señales al refrescar valores programáticamente.' },
+        toast: { t: 'Toast y lista — feedback sin fricción', d: 'Notificaciones flotantes con fade-out animado, transparentes a clics y sin robar el foco: confirman guardados, copias y borrados sin interrumpir el flujo de anotación. La lista de imágenes usa widgets custom por item, con menú contextual para copiar el nombre.' },
+        listctrl: { t: 'ImageListController — navegación y filtros', d: 'Orquesta la lista: aplica los filtros de clase y nombre contra DatasetManager, reconstruye la vista, gestiona anterior/siguiente, copia de nombres al portapapeles y el borrado de imagen + etiqueta con refresco posterior. Comunica con la ventana solo mediante señales (image_selected, notification_requested).' },
+        annctrl: { t: 'AnnotationController — dueño del estado de anotación', d: 'Mantiene la lista de cajas de la imagen actual: carga y guarda a través de yolo_io, historial de undo con 15 snapshots (deepcopy antes de cada acción destructiva), clipboard interno de cajas con pegado desplazado, renumeración de líneas y coordinación bidireccional entre lienzo y panel numérico.' },
+        datasetmgr: { t: 'DatasetManager — el core del dataset', d: 'Valida la estructura images/ + labels/, indexa solo extensiones soportadas, aplica los filtros por clase (leyendo labels bajo demanda) y por nombre, resuelve rutas de imagen/etiqueta y ejecuta el borrado coherente del par. Expone el índice como tuplas inmutables: la UI no puede corromperlo. Cero imports de Qt.' },
+        yoloio: { t: 'yolo_io — persistencia YOLO aislada', d: 'Lectura y escritura del formato «class cx cy w h». Lectura tolerante: una línea corrupta se omite con warning (fichero y número de línea al log) en vez de tumbar la app. Escritura canónica con 6 decimales en UTF-8. Al no depender de la UI, es testeable en completo aislamiento.' },
+        model: { t: 'BoundingBox — el modelo de datos', d: 'Dataclass con slots=True: menor huella de memoria y error inmediato ante atributos mal escritos. Guarda coordenadas normalizadas (0–1), el número de línea para trazabilidad con el .txt de origen y el flag is_new que permite distinguir (y ocultar) las cajas preexistentes frente a las añadidas en la sesión.' },
+        disk: { t: 'El dataset en disco — el contrato', d: 'La estructura estándar YOLO (images/ + labels/, un .txt por imagen) es el único contrato entre el editor y el conversor: sin base de datos, sin estado compartido, sin acoplamiento. Cualquier otra herramienta del ecosistema YOLO puede leer o escribir el mismo dataset.' },
+        cocojson: { t: 'Salida COCO — lista para entrenar', d: 'Carpeta espejo con las imágenes copiadas y un único annotations.json con las secciones images, annotations y categories. Las cajas van en píxeles absolutos [x_min, y_min, w, h] con áreas precalculadas, y las imágenes sin anotaciones se conservan como ejemplos negativos.' },
+        utils: { t: 'utils — funciones puras transversales', d: 'geometry.py concentra el mapeo píxel ↔ normalizado y el clamping de cajas: funciones puras sin Qt, los primeros candidatos a tests unitarios. logger.py configura consola + fichero y detecta si corre empaquetado con PyInstaller para escribir los logs junto al ejecutable, nunca en System32.' },
+        converter: { t: 'CLI YOLO → COCO — la app complementaria', d: 'Script independiente con argparse: recorre los labels, lee las dimensiones reales de cada imagen con Pillow, convierte cada caja normalizada a píxeles absolutos con clamping y autodetecta las categorías. Preserva las imágenes OK (sin anotaciones) y nunca modifica el dataset de entrada. Al ser batch y sin Qt, encaja en cualquier pipeline automatizado.' }
+    };
+
+    var archDetailEl = document.getElementById('archDetail');
+    var archNodes = document.querySelectorAll('[data-arch]');
+
+    function selectArch(key) {
+        archNodes.forEach(function (n) {
+            n.classList.toggle('on', n.dataset.arch === key);
+        });
+        var a = ARCH[key];
+        archDetailEl.innerHTML = '<h3>' + a.t + '</h3><p>' + a.d + '</p>';
+    }
+
+    archNodes.forEach(function (n) {
+        n.addEventListener('click', function () { selectArch(n.dataset.arch); });
+        n.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectArch(n.dataset.arch); }
+        });
+    });
+
+    /* ── FAQ ── */
+    document.querySelectorAll('.faq-q').forEach(function (q) {
+        q.addEventListener('click', function () {
+            var item = q.parentElement;
+            var wasOpen = item.classList.contains('open');
+            document.querySelectorAll('.faq-item.open').forEach(function (o) { o.classList.remove('open'); });
+            if (!wasOpen) item.classList.add('open');
+            q.setAttribute('aria-expanded', String(!wasOpen));
+        });
+    });
+
+    renderStepDetail();
+    selectArch('viewer');
+})();
+</script>
+
+</body>
+</html>
