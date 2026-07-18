@@ -505,6 +505,31 @@ section {
     transform: translateX(5px);
 }
 
+/* Mid-page CTA (repeated after Projects) */
+.mid-cta {
+    padding: 1rem 0 3rem;
+}
+
+.mid-cta-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    text-align: center;
+    padding: 2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+}
+
+.mid-cta-content p {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
 /* Contact Section */
 .contact-wrapper {
     text-align: center;
@@ -517,6 +542,21 @@ section {
     color: var(--text-secondary);
     margin-bottom: 2rem;
     font-size: 1.1rem;
+}
+
+.btn-whatsapp-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.05rem;
+    padding: 1rem 2.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.contact-alt {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.2rem !important;
 }
 
 .social-links {
